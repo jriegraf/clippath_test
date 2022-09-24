@@ -7,39 +7,53 @@ class PhoneWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String assetName = 'assets/phone_frame.svg';
-    final Widget svgPhoneWidget = SvgPicture.asset(assetName);
+    final Widget svgPhoneWidget = SvgPicture.asset('assets/phone_frame.svg');
+    const originalSize = Size(329.555, 714.149);
 
-    return Scaffold(body: LayoutBuilder(
+    // Only looks good for Size = originalSize but if you simulate smaller screen
+    // with a smaller SizedBox, the ClipPath does not scale down.
+    Size phoneSize = originalSize * 0.9;
+
+    return LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
       return Center(
-          child: SizedBox(
-              // height: 800,
-              // width: 400,
-              child: Stack(children: [
-        svgPhoneWidget,
-        SizedBox(
-          width: 380,
-          child: ClipPath(
-            clipper: CustomClipPath(),
-            child: Container(
-              color: Colors.red,
-            ),
-          ),
-        )
-      ])));
-    }));
+          child: SizedBox.fromSize(
+              size: phoneSize,
+              child: Stack(alignment: Alignment.center, children: [
+                svgPhoneWidget,
+                ClipPath(
+                  clipper: CustomClipPath(),
+                  child: Container(color: Colors.red),
+                )
+              ])));
+    });
   }
 }
 
 class CustomClipPath extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
+    const double factor = 0.86;
+    const Offset offset = Offset(27.3, 58.7);
     Path path = parseSvgPath(
-        'M 329.22 683.218 a 30.686 30.686 0 0 1 -30.645 30.672 h -268 a 30.686 30.686 0 0 1 -30.645 -30.672 V 30.682 a 30.69 30.69 0 0 1 30.645 -30.676 h 39.93 v 8.367 a 17.369 17.369 0 0 0 17.273 17.289 H 241.372 a 17.369 17.369 0 0 0 17.273 -17.289 V 0.007 H 298.391 a 30.692 30.692 0 0 1 30.645 30.676 V 683.218 m 0 0');
-    return path;
+        'M 329.2 683.2 A 30.7 30.7 0 0 1 298.6 713.9 H 30.6 A 30.7 30.7 0 0 1 -0.1 683.2 V 30.7 A 30.7 30.7 0 0 1 30.6 0 H 70.5 V 8.4 A 17.4 17.4 0 0 0 87.8 25.7 H 241.4 A 17.4 17.4 0 0 0 258.6 8.4 V 0 H 298.4 A 30.7 30.7 0 0 1 329 30.7 V 683.2 M 329 683.2');
+    final matrix = sizeToRect(size, offset * factor & size * factor);
+    return path.transform(matrix.storage);
   }
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  bool shouldReclip(CustomClipper<Path> oldClipper) => true;
+
+  Matrix4 sizeToRect(Size src, Rect dst,
+      {BoxFit fit = BoxFit.contain, Alignment alignment = Alignment.center}) {
+    FittedSizes fs = applyBoxFit(fit, src, dst.size);
+    double scaleX = fs.destination.width / fs.source.width;
+    double scaleY = fs.destination.height / fs.source.height;
+    Size fittedSrc = Size(src.width * scaleX, src.height * scaleY);
+    Rect out = alignment.inscribe(fittedSrc, dst);
+
+    return Matrix4.identity()
+      ..translate(out.left, out.top)
+      ..scale(scaleX, scaleY);
+  }
 }
